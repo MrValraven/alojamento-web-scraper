@@ -3,45 +3,51 @@ const cheerio = require("cheerio");
 const axios = require("axios");
 const express = require("express");
 
-const PORT = 3000;
+const PORT = 5000;
 const app = express();
+const urls = [
+  "https://alojamento.aaue.pt/index.php?page=search",
+  "https://alojamento.aaue.pt/index.php?page=search&iPage=2",
+  "https://alojamento.aaue.pt/index.php?page=search&iPage=3",
+  "https://alojamento.aaue.pt/index.php?page=search&iPage=4",
+  "https://alojamento.aaue.pt/index.php?page=search&iPage=5",
+  "https://alojamento.aaue.pt/index.php?page=search&iPage=6",
+];
+let anuncios = [];
+let totalDeAnuncios = 0;
 
 cors({
   origin: true,
 });
 
-const getAllListingsFromAlojamento = async () => {
-  const urls = [
-    "https://alojamento.aaue.pt/index.php?page=search",
-    "https://alojamento.aaue.pt/index.php?page=search&iPage=2",
-    "https://alojamento.aaue.pt/index.php?page=search&iPage=3",
-    "https://alojamento.aaue.pt/index.php?page=search&iPage=4",
-    "https://alojamento.aaue.pt/index.php?page=search&iPage=5",
-    "https://alojamento.aaue.pt/index.php?page=search&iPage=6",
-  ];
-  const links = [];
+const getAllListingsFromAlojamento = () => {
   urls.forEach((element) => {
-    axios(element)
-      .then((response) => {
-        const html = response.data;
-        const $ = cheerio.load(html);
-
-        $("a.listing-thumb", html).each(function () {
-          const link = $(this).attr("href");
-          links.push(link);
-        });
-        console.log(links);
-      })
-      .catch((err) => {
-        console.log(err);
-      });
+    getUrlsFromPage(element);
   });
-  console.log("fora:" + links);
+
+  totalDeAnuncios = anuncios.length;
 };
 
-const getDataFromListing = (listingURL) => {
+const getUrlsFromPage = (url) => {
+  axios(url)
+    .then((response) => {
+      const html = response.data;
+      const $ = cheerio.load(html);
+
+      $("a.listing-thumb", html).each(function () {
+        const url = $(this).attr("href");
+        getDataFromListing(url);
+      });
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+};
+
+const getDataFromListing = async (listingURL) => {
   const listingInfo = {
     tipo: "",
+    data_de_publicacao: "",
     titulo: "",
     descricao: "",
     preco: "",
@@ -49,12 +55,12 @@ const getDataFromListing = (listingURL) => {
     tipologia: "",
     despesas_incluidas: false,
     genero_aceite: "",
-    mobiliado: false,
+    mobilado: false,
     sala: false,
-    numero_quartos_disponiveis: 0,
-    numero_total_quartos: 0,
+    numero_quartos_disponiveis: "",
+    numero_total_quartos: "",
     cozinha: false,
-    numero_casas_banho: 3,
+    numero_casas_banho: "",
     endereco: "",
     localidade: "",
     codigo_postal: "",
@@ -64,7 +70,7 @@ const getDataFromListing = (listingURL) => {
     coordenadas_gps: "",
   };
 
-  axios(listingURL).then((response) => {
+  await axios(listingURL).then((response) => {
     const html = response.data;
     const $ = cheerio.load(html);
 
@@ -72,9 +78,19 @@ const getDataFromListing = (listingURL) => {
 
     listingInfo.tipo = tipo.includes("Casas") ? "Casa" : "Quarto";
 
+    listingInfo.data_de_publicacao = $(".item-header div")
+      .first()
+      .text()
+      .split(":")[1]
+      .trim();
+
     const preco = $(".price").text();
     const indexOfEuroWord = preco.indexOf("Euro");
     listingInfo.preco = preco.substring(0, indexOfEuroWord).trim();
+
+    if (!listingInfo.preco) {
+      listingInfo.preco = "Verificar com vendedor";
+    }
 
     listingInfo.titulo = $("#item-content").find("h1 strong").text();
 
@@ -102,11 +118,14 @@ const getDataFromListing = (listingURL) => {
 
     listingInfo.tipologia = getTextFromElement(html, "Tipologia");
 
-    listingInfo.despesas_incluidas = getTextFromElement(html, "Despesas");
+    const despesas_incluidas = getTextFromElement(html, "Despesas");
+
+    listingInfo.despesas_incluidas =
+      despesas_incluidas === "Não" ? false : true;
 
     listingInfo.genero_aceite = getTextFromElement(html, "Genero");
 
-    listingInfo.mobiliado = getBooleanFromElement(html, "Mobiliado");
+    listingInfo.mobilado = getBooleanFromElement(html, "Mobiliado");
 
     listingInfo.sala = getBooleanFromElement(html, "Sala");
 
@@ -132,7 +151,7 @@ const getDataFromListing = (listingURL) => {
     listingInfo.localidade = endereco[1];
     listingInfo.codigo_postal = "7000";
 
-    console.log(listingInfo);
+    anuncios.push(listingInfo);
   });
 };
 
@@ -152,10 +171,114 @@ const getBooleanFromElement = (html, element) => {
 const getTextFromElement = (html, element) => {
   const $ = cheerio.load(html);
   // Get text from specified element, split text contents into an array,get second index which is the intended value, remove whitespaces by using trim()
-  return $(`.meta:contains('${element}')`).text().split(":")[1].trim();
+  let elementText = $(`.meta:contains('${element}')`).text().split(":")[1];
+  if (elementText) {
+    return elementText.trim();
+  } else if (elementText == undefined) {
+    return "";
+  }
+};
+
+const sortAnuncios = () => {
+  anuncios.sort((a, b) => {
+    let dateA = new Date(
+        parseInt(a.data_de_publicacao.substring(6)),
+        parseInt(a.data_de_publicacao.substring(3, 5)),
+        parseInt(a.data_de_publicacao.substring(0, 2))
+      ),
+      dateB = new Date(
+        parseInt(b.data_de_publicacao.substring(6)),
+        parseInt(b.data_de_publicacao.substring(3, 5)),
+        parseInt(b.data_de_publicacao.substring(0, 2))
+      );
+    return dateB - dateA;
+  });
+};
+const sortAnunciosReversed = () => {
+  anuncios.sort((a, b) => {
+    let dateA = new Date(
+        parseInt(a.data_de_publicacao.substring(6)),
+        parseInt(a.data_de_publicacao.substring(3, 5)),
+        parseInt(a.data_de_publicacao.substring(0, 2))
+      ),
+      dateB = new Date(
+        parseInt(b.data_de_publicacao.substring(6)),
+        parseInt(b.data_de_publicacao.substring(3, 5)),
+        parseInt(b.data_de_publicacao.substring(0, 2))
+      );
+    return dateA - dateB;
+  });
 };
 
 getAllListingsFromAlojamento();
+
+/* setInterval(() => {
+  let anunciosNew = [];
+  urls.forEach(async (url) => {
+    await axios(url)
+      .then(async (response) => {
+        const html = await response.data;
+        const $ = cheerio.load(html);
+
+        $("a.listing-thumb", html).each(function () {
+          const url = $(this).attr("href");
+          anunciosNew.push(url);
+        });
+      })
+      .catch((err) => {
+        console.log(err);
+      });
+  });
+
+  setTimeout(() => {
+    anunciosNew.sort((a, b) => {
+      let dateA = new Date(
+          parseInt(a.data_de_publicacao.substring(6)),
+          parseInt(a.data_de_publicacao.substring(3, 5)),
+          parseInt(a.data_de_publicacao.substring(0, 2))
+        ),
+        dateB = new Date(
+          parseInt(b.data_de_publicacao.substring(6)),
+          parseInt(b.data_de_publicacao.substring(3, 5)),
+          parseInt(b.data_de_publicacao.substring(0, 2))
+        );
+      return dateB - dateA;
+    });
+
+    console.log(anunciosNew.length);
+    console.log(totalDeAnuncios);
+    console.log(anunciosNew[0].titulo);
+    console.log(anuncios[0].titulo);
+
+    if (
+      anunciosNew.length === totalDeAnuncios &&
+      anunciosNew[0].titulo === anuncios[0].titulo
+    ) {
+      return;
+    } else {
+      anuncios = [];
+      totalDeAnuncios = 0;
+      getAllListingsFromAlojamento();
+    }
+  }, 20000);
+}, 20000); */
+
+app.get("/getAnuncios", (req, res) => {
+  anuncios.sort((a, b) => {
+    let dateA = new Date(
+        parseInt(a.data_de_publicacao.substring(6)),
+        parseInt(a.data_de_publicacao.substring(3, 5)),
+        parseInt(a.data_de_publicacao.substring(0, 2))
+      ),
+      dateB = new Date(
+        parseInt(b.data_de_publicacao.substring(6)),
+        parseInt(b.data_de_publicacao.substring(3, 5)),
+        parseInt(b.data_de_publicacao.substring(0, 2))
+      );
+    return dateB - dateA;
+  });
+  res.json(anuncios);
+});
 
 app.listen(PORT, () => {
   console.log("app is live");

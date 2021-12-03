@@ -149,7 +149,6 @@ const getDataFromListing = async (listingURL) => {
 
     listingInfo.endereco = endereco[0];
     listingInfo.localidade = endereco[1];
-    listingInfo.codigo_postal = "7000";
 
     anuncios.push(listingInfo);
   });
@@ -211,6 +210,11 @@ const sortAnunciosReversed = () => {
 };
 
 getAllListingsFromAlojamento();
+
+setInterval(() => {
+  anuncios = [];
+  getAllListingsFromAlojamento();
+}, 1000 * 60 * 60);
 
 /* setInterval(() => {
   let anunciosNew = [];

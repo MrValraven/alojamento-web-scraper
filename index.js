@@ -207,57 +207,6 @@ setInterval(() => {
   getAllListingsFromAlojamento();
 }, 1000 * 60 * 60);
 
-/* setInterval(() => {
-  let anunciosNew = [];
-  urls.forEach(async (url) => {
-    await axios(url)
-      .then(async (response) => {
-        const html = await response.data;
-        const $ = cheerio.load(html);
-
-        $("a.listing-thumb", html).each(function () {
-          const url = $(this).attr("href");
-          anunciosNew.push(url);
-        });
-      })
-      .catch((err) => {
-        console.log(err);
-      });
-  });
-
-  setTimeout(() => {
-    anunciosNew.sort((a, b) => {
-      let dateA = new Date(
-          parseInt(a.data_de_publicacao.substring(6)),
-          parseInt(a.data_de_publicacao.substring(3, 5)),
-          parseInt(a.data_de_publicacao.substring(0, 2))
-        ),
-        dateB = new Date(
-          parseInt(b.data_de_publicacao.substring(6)),
-          parseInt(b.data_de_publicacao.substring(3, 5)),
-          parseInt(b.data_de_publicacao.substring(0, 2))
-        );
-      return dateB - dateA;
-    });
-
-    console.log(anunciosNew.length);
-    console.log(totalDeAnuncios);
-    console.log(anunciosNew[0].titulo);
-    console.log(anuncios[0].titulo);
-
-    if (
-      anunciosNew.length === totalDeAnuncios &&
-      anunciosNew[0].titulo === anuncios[0].titulo
-    ) {
-      return;
-    } else {
-      anuncios = [];
-      totalDeAnuncios = 0;
-      getAllListingsFromAlojamento();
-    }
-  }, 20000);
-}, 20000); */
-
 app.get("/getAnuncios", (req, res) => {
   anuncios.sort((a, b) => {
     let dateA = new Date(

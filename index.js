@@ -2,6 +2,9 @@ const cors = require("cors");
 const cheerio = require("cheerio");
 const axios = require("axios");
 const express = require("express");
+const dotenv = require("dotenv");
+
+dotenv.config();
 
 const PORT = process.env.PORT || 5000;
 const app = express();
@@ -12,9 +15,9 @@ const urls = [
   "https://alojamento.aaue.pt/index.php?page=search&iPage=4",
   "https://alojamento.aaue.pt/index.php?page=search&iPage=5",
   "https://alojamento.aaue.pt/index.php?page=search&iPage=6",
+  "https://alojamento.aaue.pt/index.php?page=search&iPage=7",
 ];
 let anuncios = [];
-let totalDeAnuncios = 0;
 
 cors({
   origin: true,
@@ -46,6 +49,7 @@ const getUrlsFromPage = (url) => {
 
 const getDataFromListing = async (listingURL) => {
   const listingInfo = {
+    url: "",
     tipo: "",
     data_de_publicacao: "",
     titulo: "",
@@ -73,6 +77,8 @@ const getDataFromListing = async (listingURL) => {
   await axios(listingURL).then((response) => {
     const html = response.data;
     const $ = cheerio.load(html);
+
+    listingInfo.url = listingURL;
 
     const tipo = $(".breadcrumb").find("span:contains('Arrendar')").text();
 
@@ -191,21 +197,6 @@ const sortAnuncios = () => {
         parseInt(b.data_de_publicacao.substring(0, 2))
       );
     return dateB - dateA;
-  });
-};
-const sortAnunciosReversed = () => {
-  anuncios.sort((a, b) => {
-    let dateA = new Date(
-        parseInt(a.data_de_publicacao.substring(6)),
-        parseInt(a.data_de_publicacao.substring(3, 5)),
-        parseInt(a.data_de_publicacao.substring(0, 2))
-      ),
-      dateB = new Date(
-        parseInt(b.data_de_publicacao.substring(6)),
-        parseInt(b.data_de_publicacao.substring(3, 5)),
-        parseInt(b.data_de_publicacao.substring(0, 2))
-      );
-    return dateA - dateB;
   });
 };
 

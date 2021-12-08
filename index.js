@@ -15,7 +15,6 @@ const urls = [
   "https://alojamento.aaue.pt/index.php?page=search&iPage=4",
   "https://alojamento.aaue.pt/index.php?page=search&iPage=5",
   "https://alojamento.aaue.pt/index.php?page=search&iPage=6",
-  "https://alojamento.aaue.pt/index.php?page=search&iPage=7",
 ];
 let anuncios = [];
 
